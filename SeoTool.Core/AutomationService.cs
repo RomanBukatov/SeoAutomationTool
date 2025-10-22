@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 using SeoTool.Core.Abstractions;
 using SeoTool.Domain.Entities;
 
@@ -25,10 +26,16 @@ namespace SeoTool.Core
             _browserWorker = browserWorker ?? throw new ArgumentNullException(nameof(browserWorker));
         }
 
-        public async Task StartAutomationAsync(SearchTask task)
+        public async Task StartAutomationAsync(SearchTask task, string proxyPath, string cookiesPath, string usedCookiesFolderPath, CancellationToken cancellationToken = default, params string[] additionalPaths)
         {
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
+
+            if (string.IsNullOrWhiteSpace(proxyPath))
+                throw new ArgumentNullException(nameof(proxyPath));
+
+            if (string.IsNullOrWhiteSpace(cookiesPath))
+                throw new ArgumentNullException(nameof(cookiesPath));
 
             try
             {
@@ -36,17 +43,17 @@ namespace SeoTool.Core
 
                 // Поочередно вызываем все провайдеры для получения данных
                 Console.WriteLine("Getting proxy...");
-                var proxy = await _proxyProvider.GetNextProxyAsync();
+                var proxy = await _proxyProvider.GetNextProxyAsync(proxyPath);
 
                 Console.WriteLine("Getting cookies...");
-                var cookies = await _cookieProvider.GetNextCookiesAsync();
+                var cookies = await _cookieProvider.GetNextCookiesAsync(cookiesPath, usedCookiesFolderPath);
 
                 Console.WriteLine("Getting fingerprint...");
                 var fingerprint = await _fingerprintProvider.GetFingerprintAsync();
 
                 // Вызываем браузерный воркер с полученными данными
                 Console.WriteLine("Executing search task...");
-                await _browserWorker.PerformSearchTaskAsync(task, proxy, cookies, fingerprint);
+                await _browserWorker.PerformSearchTaskAsync(task, proxy, cookies, fingerprint, cancellationToken);
 
                 Console.WriteLine($"Automation completed successfully for task: {task.Domain} - {task.Keyword}");
             }

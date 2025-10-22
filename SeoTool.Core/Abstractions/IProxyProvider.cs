@@ -5,6 +5,6 @@ namespace SeoTool.Core.Abstractions
 {
     public interface IProxyProvider
     {
-        Task<Proxy> GetNextProxyAsync();
+        Task<Proxy> GetNextProxyAsync(string filePath);
     }
 }

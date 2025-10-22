@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.Playwright;
 using SeoTool.Core.Abstractions;
 using SeoTool.Domain.Entities;
@@ -11,7 +12,7 @@ namespace SeoTool.Infrastructure.Services
 {
     public class PlaywrightBrowserWorker : IBrowserWorker
     {
-        public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, Fingerprint fingerprint)
+        public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, Fingerprint fingerprint, CancellationToken cancellationToken = default)
         {
             IPlaywright? playwright = null;
             IBrowser? browser = null;
@@ -22,6 +23,7 @@ namespace SeoTool.Infrastructure.Services
             {
                 // Инициализируем Playwright
                 playwright = await Playwright.CreateAsync();
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Создаем объект BrowserTypeLaunchOptions и устанавливаем данные прокси
                 var playwrightProxy = new Microsoft.Playwright.Proxy
@@ -43,9 +45,11 @@ namespace SeoTool.Infrastructure.Services
 
                 // Запускаем браузер с опциями прокси
                 browser = await playwright.Chromium.LaunchAsync(launchOptions);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Создаем новый BrowserContext
                 context = await browser.NewContextAsync();
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Преобразуем IEnumerable<CookieInfo> в формат Playwright (Cookie[])
                 var playwrightCookies = cookies.Select(cookie => new Cookie
@@ -64,35 +68,42 @@ namespace SeoTool.Infrastructure.Services
 
                 // Создаем новую страницу
                 page = await context.NewPageAsync();
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Применяем отпечаток к странице через AddInitScriptAsync
                 if (!string.IsNullOrEmpty(fingerprint.Value))
                 {
                     await page.AddInitScriptAsync(fingerprint.Value);
                 }
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Переходим на https://www.bing.com
                 await page.GotoAsync("https://www.bing.com");
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Находим поле ввода по селектору [name="q"] и вводим keyword
                 var searchBox = page.Locator("[name=\"q\"]");
                 await searchBox.FillAsync(task.Keyword);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Нажимаем Enter
                 await page.Keyboard.PressAsync("Enter");
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Ждем загрузки результатов
                 await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Находим ссылку, которая содержит task.Domain, и берем первую
                 var targetLink = page.Locator($"a[href*='{task.Domain}']").First;
 
                 // Кликаем по ссылке
                 await targetLink.ClickAsync();
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Ждем случайное время от 30 до 60 секунд
                 var randomDelay = Random.Shared.Next(30, 61);
-                await Task.Delay(randomDelay * 1000);
+                await Task.Delay(randomDelay * 1000, cancellationToken);
             }
             catch (Exception ex)
             {

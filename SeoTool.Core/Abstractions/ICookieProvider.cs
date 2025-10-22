@@ -6,6 +6,6 @@ namespace SeoTool.Core.Abstractions
 {
     public interface ICookieProvider
     {
-        Task<IEnumerable<CookieInfo>> GetNextCookiesAsync();
+        Task<IEnumerable<CookieInfo>> GetNextCookiesAsync(string folderPath, string usedCookiesFolderPath);
     }
 }

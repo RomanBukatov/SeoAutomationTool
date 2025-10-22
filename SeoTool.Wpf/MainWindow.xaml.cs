@@ -8,6 +8,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Extensions.DependencyInjection;
+using SeoTool.Wpf.ViewModels;
 
 namespace SeoTool.Wpf
 {
@@ -19,6 +21,7 @@ namespace SeoTool.Wpf
         public MainWindow()
         {
             InitializeComponent();
+            DataContext = SeoTool.Wpf.App.ServiceProvider?.GetRequiredService<MainViewModel>();
         }
     }
 }

@@ -9,25 +9,27 @@ namespace SeoTool.Infrastructure.Services
 {
     public class FileProxyProvider : IProxyProvider
     {
-        private readonly string _filePath;
-
-        public FileProxyProvider(string filePath)
+        public FileProxyProvider()
         {
-            _filePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
         }
 
-        public async Task<Proxy> GetNextProxyAsync()
+        public async Task<Proxy> GetNextProxyAsync(string filePath)
         {
-            if (!File.Exists(_filePath))
+            if (string.IsNullOrWhiteSpace(filePath))
             {
-                throw new FileNotFoundException($"Proxy file not found: {_filePath}");
+                throw new ArgumentNullException(nameof(filePath));
             }
 
-            var lines = await File.ReadAllLinesAsync(_filePath);
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException($"Proxy file not found: {filePath}");
+            }
+
+            var lines = await File.ReadAllLinesAsync(filePath);
 
             if (lines.Length == 0)
             {
-                throw new InvalidOperationException($"Proxy file is empty: {_filePath}");
+                throw new InvalidOperationException($"Proxy file is empty: {filePath}");
             }
 
             var random = new Random();
@@ -35,7 +37,7 @@ namespace SeoTool.Infrastructure.Services
 
             if (string.IsNullOrWhiteSpace(randomLine))
             {
-                throw new InvalidOperationException($"Selected proxy line is empty in file: {_filePath}");
+                throw new InvalidOperationException($"Selected proxy line is empty in file: {filePath}");
             }
 
             return ParseProxy(randomLine);
@@ -50,23 +52,26 @@ namespace SeoTool.Infrastructure.Services
                 throw new FormatException($"Invalid proxy format: {proxyLine}. Expected format: host:port[:user:pass]");
             }
 
-            if (!int.TryParse(parts[1], out var port))
+            // Берем только первые 4 части, остальное игнорируем
+            var limitedParts = parts.Take(4).ToArray();
+
+            if (!int.TryParse(limitedParts[1], out var port))
             {
-                throw new FormatException($"Invalid port number: {parts[1]} in proxy: {proxyLine}");
+                throw new FormatException($"Invalid port number: {limitedParts[1]} in proxy: {proxyLine}");
             }
 
-            var host = parts[0];
+            var host = limitedParts[0];
             string? username = null;
             string? password = null;
 
-            if (parts.Length >= 3)
+            if (limitedParts.Length >= 3)
             {
-                username = parts[2];
+                username = limitedParts[2];
             }
 
-            if (parts.Length >= 4)
+            if (limitedParts.Length >= 4)
             {
-                password = parts[3];
+                password = limitedParts[3];
             }
 
             return new Proxy(host, port, username, password);
