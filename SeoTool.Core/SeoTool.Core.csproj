@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SeoTool.Domain\SeoTool.Domain.csproj" />
+    <ProjectReference Include="..\SeoTool.Infrastructure\SeoTool.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

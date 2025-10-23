@@ -32,11 +32,6 @@ namespace SeoTool.Wpf
             serviceCollection.AddTransient<IBrowserWorker, PlaywrightBrowserWorker>();
             serviceCollection.AddSingleton<IProxyProvider, FileProxyProvider>();
             serviceCollection.AddSingleton<ICookieProvider, FileCookieProvider>();
-            serviceCollection.AddSingleton<IFingerprintProvider>(sp =>
-            {
-                var httpClient = sp.GetRequiredService<HttpClient>();
-                return new FingerprintSwitcherProvider(httpClient, "ваш_api_ключ");
-            });
 
             // Регистрируем HttpClient как singleton
             serviceCollection.AddSingleton<HttpClient>(new HttpClient());

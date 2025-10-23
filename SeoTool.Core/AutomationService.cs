@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using SeoTool.Core.Abstractions;
 using SeoTool.Domain.Entities;
+using SeoTool.Infrastructure.Services;
 
 namespace SeoTool.Core
 {
@@ -11,22 +12,22 @@ namespace SeoTool.Core
     {
         private readonly IProxyProvider _proxyProvider;
         private readonly ICookieProvider _cookieProvider;
-        private readonly IFingerprintProvider _fingerprintProvider;
         private readonly IBrowserWorker _browserWorker;
+        private readonly HttpClient _httpClient;
 
         public AutomationService(
             IProxyProvider proxyProvider,
             ICookieProvider cookieProvider,
-            IFingerprintProvider fingerprintProvider,
-            IBrowserWorker browserWorker)
+            IBrowserWorker browserWorker,
+            HttpClient httpClient)
         {
             _proxyProvider = proxyProvider ?? throw new ArgumentNullException(nameof(proxyProvider));
             _cookieProvider = cookieProvider ?? throw new ArgumentNullException(nameof(cookieProvider));
-            _fingerprintProvider = fingerprintProvider ?? throw new ArgumentNullException(nameof(fingerprintProvider));
             _browserWorker = browserWorker ?? throw new ArgumentNullException(nameof(browserWorker));
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
-        public async Task StartAutomationAsync(SearchTask task, string proxyPath, string cookiesPath, string usedCookiesFolderPath, CancellationToken cancellationToken = default, params string[] additionalPaths)
+        public async Task StartAutomationAsync(SearchTask task, string proxyPath, string cookiesPath, string usedCookiesFolderPath, string fingerprintApiKey, CancellationToken cancellationToken = default, params string[] additionalPaths)
         {
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
@@ -36,6 +37,9 @@ namespace SeoTool.Core
 
             if (string.IsNullOrWhiteSpace(cookiesPath))
                 throw new ArgumentNullException(nameof(cookiesPath));
+
+            if (string.IsNullOrWhiteSpace(fingerprintApiKey))
+                throw new ArgumentNullException(nameof(fingerprintApiKey));
 
             try
             {
@@ -49,7 +53,9 @@ namespace SeoTool.Core
                 var cookies = await _cookieProvider.GetNextCookiesAsync(cookiesPath, usedCookiesFolderPath);
 
                 Console.WriteLine("Getting fingerprint...");
-                var fingerprint = await _fingerprintProvider.GetFingerprintAsync();
+                // Create fingerprint provider with the provided API key
+                var fingerprintProvider = new FingerprintSwitcherProvider(_httpClient, fingerprintApiKey);
+                var fingerprint = await fingerprintProvider.GetFingerprintAsync();
 
                 // Вызываем браузерный воркер с полученными данными
                 Console.WriteLine("Executing search task...");

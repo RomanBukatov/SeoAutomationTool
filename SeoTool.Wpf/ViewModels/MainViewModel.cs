@@ -49,7 +49,7 @@ namespace SeoTool.Wpf.ViewModels
                 // Create new cancellation token source
                 _cts = new CancellationTokenSource();
                 var task = new SearchTask("example.com", "keyword"); // Using placeholder data as specified
-                await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, _cts.Token);
+                await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, FingerprintApiKey, _cts.Token);
             }
             catch (Exception ex)
             {
