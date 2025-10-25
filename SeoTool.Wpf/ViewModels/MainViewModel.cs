@@ -1,18 +1,20 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SeoTool.Core;
+using SeoTool.Core.Abstractions;
 using SeoTool.Domain.Entities;
 using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Win32;
 using System.Windows;
 using System.Runtime.InteropServices;
+using System.IO;
 
 namespace SeoTool.Wpf.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
-        private readonly AutomationService _automationService;
+        private readonly IAutomationService _automationService;
         private CancellationTokenSource _cts;
 
         [ObservableProperty]
@@ -24,8 +26,6 @@ namespace SeoTool.Wpf.ViewModels
         [ObservableProperty]
         private string _usedCookiesFolderPath;
 
-        [ObservableProperty]
-        private string _fingerprintApiKey;
 
         [ObservableProperty]
         private string _configFilePath;
@@ -33,7 +33,7 @@ namespace SeoTool.Wpf.ViewModels
         [ObservableProperty]
         private string _logs;
 
-        public MainViewModel(AutomationService automationService)
+        public MainViewModel(IAutomationService automationService)
         {
             _automationService = automationService;
         }
@@ -48,8 +48,10 @@ namespace SeoTool.Wpf.ViewModels
             {
                 // Create new cancellation token source
                 _cts = new CancellationTokenSource();
-                var task = new SearchTask("example.com", "keyword"); // Using placeholder data as specified
-                await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, FingerprintApiKey, _cts.Token);
+                var firstLine = File.ReadLines(ConfigFilePath).First();
+                var parts = firstLine.Split(':');
+                var task = new SearchTask(parts[0], parts[1]);
+                await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, _cts.Token);
             }
             catch (Exception ex)
             {
@@ -74,10 +76,9 @@ namespace SeoTool.Wpf.ViewModels
         private bool CanStartAutomation()
         {
             return !string.IsNullOrWhiteSpace(ProxyFilePath) &&
-                   !string.IsNullOrWhiteSpace(CookiesFolderPath) &&
-                   !string.IsNullOrWhiteSpace(UsedCookiesFolderPath) &&
-                   !string.IsNullOrWhiteSpace(FingerprintApiKey) &&
-                   !string.IsNullOrWhiteSpace(ConfigFilePath);
+                    !string.IsNullOrWhiteSpace(CookiesFolderPath) &&
+                    !string.IsNullOrWhiteSpace(UsedCookiesFolderPath) &&
+                    !string.IsNullOrWhiteSpace(ConfigFilePath);
         }
 
         partial void OnProxyFilePathChanged(string value)
@@ -95,10 +96,6 @@ namespace SeoTool.Wpf.ViewModels
             StartAutomationCommand.NotifyCanExecuteChanged();
         }
 
-        partial void OnFingerprintApiKeyChanged(string value)
-        {
-            StartAutomationCommand.NotifyCanExecuteChanged();
-        }
 
         partial void OnConfigFilePathChanged(string value)
         {
@@ -182,18 +179,6 @@ namespace SeoTool.Wpf.ViewModels
             }
         }
 
-        [RelayCommand]
-        private void SelectFingerprintApiKey()
-        {
-            // Для API ключа проще позволить пользователю ввести его вручную
-            // Можно показать диалоговое окно с подсказкой или просто установить фокус на поле
-            MessageBox.Show(
-                "Пожалуйста, введите ваш API-ключ от FingerprintSwitcher в поле выше.\n\n" +
-                "Вы можете получить ключ в личном кабинете сервиса FingerprintSwitcher.",
-                "API-ключ Fingerprint",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
 
         private static string GetUserFriendlyErrorMessage(Exception ex)
         {

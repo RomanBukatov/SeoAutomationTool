@@ -12,7 +12,7 @@ namespace SeoTool.Infrastructure.Services
 {
     public class PlaywrightBrowserWorker : IBrowserWorker
     {
-        public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, Fingerprint fingerprint, CancellationToken cancellationToken = default)
+        public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, CancellationToken cancellationToken = default)
         {
             IPlaywright? playwright = null;
             IBrowser? browser = null;
@@ -70,11 +70,6 @@ namespace SeoTool.Infrastructure.Services
                 page = await context.NewPageAsync();
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Применяем отпечаток к странице через AddInitScriptAsync
-                if (!string.IsNullOrEmpty(fingerprint.Value))
-                {
-                    await page.AddInitScriptAsync(fingerprint.Value);
-                }
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Переходим на https://www.bing.com
@@ -104,6 +99,7 @@ namespace SeoTool.Infrastructure.Services
                 // Ждем случайное время от 30 до 60 секунд
                 var randomDelay = Random.Shared.Next(30, 61);
                 await Task.Delay(randomDelay * 1000, cancellationToken);
+
             }
             catch (Exception ex)
             {

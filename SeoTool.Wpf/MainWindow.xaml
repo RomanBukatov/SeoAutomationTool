@@ -98,24 +98,6 @@
                             <materialDesign:PackIcon Kind="Key" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <TextBlock Text="API и конфигурация" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
                         </StackPanel>
-                        <DockPanel Margin="0,0,0,15">
-                            <Button
-                                Command="{Binding SelectFingerprintApiKeyCommand}"
-                                Style="{DynamicResource MaterialDesignIconButton}"
-                                ToolTip="Выбрать файл с API ключом"
-                                DockPanel.Dock="Right"
-                                Margin="8,0,0,0"
-                                Width="40"
-                                Height="40">
-                                <materialDesign:PackIcon Kind="FileKey" />
-                            </Button>
-                            <TextBox
-                                Text="{Binding FingerprintApiKey}"
-                                materialDesign:HintAssist.Hint="API-ключ Fingerprint"
-                                materialDesign:HintAssist.HelperText="Ключ для сервиса Fingerprint"
-                                ToolTip="Укажите API-ключ от FingerprintSwitcher."
-                                DockPanel.Dock="Left" />
-                        </DockPanel>
                         <DockPanel Margin="0,0,0,20">
                             <Button
                                 Command="{Binding SelectConfigFileCommand}"

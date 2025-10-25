@@ -26,7 +26,7 @@ namespace SeoTool.Wpf
             // Регистрируем сервисы приложения
             serviceCollection.AddTransient<MainViewModel>();
             serviceCollection.AddTransient<MainWindow>();
-            serviceCollection.AddTransient<AutomationService>();
+            serviceCollection.AddTransient<IAutomationService, AutomationService>();
 
             // Регистрируем провайдеры
             serviceCollection.AddTransient<IBrowserWorker, PlaywrightBrowserWorker>();
