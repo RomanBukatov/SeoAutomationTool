@@ -35,15 +35,43 @@ public class AutomationService : IAutomationService
     {
         try
         {
-            Console.WriteLine(">>> AutomationService.StartAutomationAsync START");
-            var fingerprint = await _fingerprintProvider.GetFingerprintAsync(fingerprintApiKey);
-            // TODO: Pass fingerprint to browserWorker
+            Console.WriteLine(">>> AutomationService: Получаю прокси...");
+            var proxy = await _proxyProvider.GetNextProxyAsync(proxyPath);
+            token.ThrowIfCancellationRequested();
+            Console.WriteLine(">>> AutomationService: Прокси получен успешно");
+
+            Console.WriteLine(">>> AutomationService: Получаю куки...");
+            var cookies = await _cookieProvider.GetNextCookiesAsync(cookiesPath, usedCookiesPath);
+            token.ThrowIfCancellationRequested();
+            Console.WriteLine(">>> AutomationService: Куки получены успешно");
+
+            Console.WriteLine(">>> AutomationService: Получаю отпечаток...");
+            Fingerprint fingerprint;
+            try
+            {
+                fingerprint = await _fingerprintProvider.GetFingerprintAsync(fingerprintApiKey);
+                token.ThrowIfCancellationRequested();
+                Console.WriteLine(">>> AutomationService: Отпечаток получен успешно");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($">>> AutomationService: Ошибка при получении отпечатка: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                throw;
+            }
+
+            Console.WriteLine(">>> AutomationService: Запускаю воркер...");
+            await _browserWorker.PerformSearchTaskAsync(task, proxy, cookies, fingerprint, token);
+            Console.WriteLine(">>> AutomationService: Воркер завершил работу успешно");
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine(">>> AutomationService: Операция отменена пользователем.");
         }
         catch (Exception ex)
         {
-            // Здесь можно добавить логирование
             Console.WriteLine($"Ошибка в AutomationService: {ex.Message}");
-            throw; // Перебрасываем исключение выше, чтобы ViewModel его поймал
+            throw;
         }
     }
 }

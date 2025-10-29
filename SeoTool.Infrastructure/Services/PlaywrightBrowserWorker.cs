@@ -20,12 +20,14 @@ namespace SeoTool.Infrastructure.Services
             _logger = logger;
         }
 
-        public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, CancellationToken cancellationToken = default)
+        public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, Fingerprint fingerprint, CancellationToken cancellationToken = default)
         {
             IPlaywright? playwright = null;
             IBrowser? browser = null;
             IBrowserContext? context = null;
             IPage? page = null;
+
+            playwright = await Playwright.CreateAsync();
 
             try
             {
@@ -33,7 +35,6 @@ namespace SeoTool.Infrastructure.Services
                 // Инициализируем Playwright
                 Console.WriteLine(">>> PlaywrightBrowserWorker: Creating Playwright instance...");
                 _logger.LogInformation("Инициализация Playwright...");
-                playwright = await Playwright.CreateAsync();
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Создаем объект BrowserTypeLaunchOptions и устанавливаем данные прокси
@@ -51,7 +52,8 @@ namespace SeoTool.Infrastructure.Services
 
                 var launchOptions = new BrowserTypeLaunchOptions
                 {
-                    Proxy = playwrightProxy
+                    Proxy = playwrightProxy,
+                    Headless = false
                 };
 
                 // Запускаем браузер с опциями прокси
@@ -75,27 +77,62 @@ namespace SeoTool.Infrastructure.Services
                 // Добавляем куки в контекст
                 if (playwrightCookies.Any())
                 {
-                    await context.AddCookiesAsync(playwrightCookies);
+                    foreach (var cookie in playwrightCookies)
+                    {
+                        try
+                        {
+                            await context.AddCookiesAsync(new[] { cookie });
+                        }
+                        catch (PlaywrightException ex)
+                        {
+                            _logger.LogWarning(ex, "Не удалось добавить одну из кук. Возможно, она некорректна. Пропускаю. Имя: {CookieName}", cookie.Name);
+                            // Просто игнорируем ошибку и идем к следующей куке
+                        }
+                    }
                 }
 
                 // Создаем новую страницу
                 page = await context.NewPageAsync();
+                await page.AddInitScriptAsync(fingerprint.Value);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Временное изменение: переходим на whoer.net для проверки прокси
-                _logger.LogInformation("Перехожу на страницу {Url}...", "https://whoer.net");
-                await page.GotoAsync("https://whoer.net");
+                // Формируем поисковый URL вручную
+                var searchQuery = System.Net.WebUtility.UrlEncode(task.Keyword);
+                var searchUrl = $"https://www.bing.com/search?q={searchQuery}";
+
+                _logger.LogInformation("Перехожу напрямую по поисковому URL: {SearchUrl}", searchUrl);
+
+                // Переходим напрямую на страницу с результатами поиска
+                await page.GotoAsync(searchUrl, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Ждем загрузки страницы
-                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                // Принимаем куки Bing, если есть кнопка
+                try
+                {
+                    var acceptButton = page.Locator("button:has-text('Accept'), button:has-text('Принять'), button[id*='accept'], button[class*='accept']").First;
+                    await acceptButton.ClickAsync();
+                    Console.WriteLine(">>> PlaywrightBrowserWorker: Принял куки Bing");
+                }
+                catch
+                {
+                    Console.WriteLine(">>> PlaywrightBrowserWorker: Кнопка принятия куки не найдена или уже принята");
+                }
+
+                // Находим первую ссылку, содержащую домен
+                var link = page.Locator($"a[href*='{task.Domain}']").First;
+
+                // Сначала скроллим до элемента, чтобы он стал видимым
+                await link.ScrollIntoViewIfNeededAsync();
+
+                // Ждем, пока он точно будет готов к клику
+                await link.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+
+                // Кликаем
+                await link.ClickAsync();
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Делаем скриншот страницы
-                await page.ScreenshotAsync(new PageScreenshotOptions { Path = "whoer_screenshot.png" });
-
-                // Ждем случайное время от 5 до 10 секунд (для теста прокси)
-                var randomDelay = Random.Shared.Next(5, 11);
+                // Ждем на странице случайное время от 30 до 60 секунд
+                var randomDelay = Random.Shared.Next(30, 61);
                 await Task.Delay(randomDelay * 1000, cancellationToken);
 
             }
@@ -123,7 +160,10 @@ namespace SeoTool.Infrastructure.Services
                     await browser.CloseAsync();
                 }
 
-                playwright?.Dispose();
+                if (playwright != null)
+                {
+                    playwright.Dispose();
+                }
             }
         }
     }

@@ -1,7 +1,6 @@
 ﻿using System.Configuration;
 using System.Data;
 using System.Windows;
-using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SeoTool.Core;
@@ -20,6 +19,17 @@ namespace SeoTool.Wpf
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Глобальный обработчик неперехваченных исключений
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                var exception = args.ExceptionObject as Exception;
+                Console.WriteLine($"=== UNHANDLED EXCEPTION ===");
+                Console.WriteLine($"Exception: {exception?.Message}");
+                Console.WriteLine($"StackTrace: {exception?.StackTrace}");
+                Console.WriteLine($"IsTerminating: {args.IsTerminating}");
+                Console.WriteLine($"=== END UNHANDLED EXCEPTION ===");
+            };
+
             base.OnStartup(e);
 
             var serviceCollection = new ServiceCollection();
@@ -42,8 +52,6 @@ namespace SeoTool.Wpf
             serviceCollection.AddSingleton<ICookieProvider, FileCookieProvider>();
             serviceCollection.AddSingleton<IFingerprintProvider, GoLoginProvider>();
 
-            // Регистрируем HttpClient как singleton
-            serviceCollection.AddSingleton<HttpClient>(new HttpClient());
 
             // Создаем провайдер сервисов
             ServiceProvider = serviceCollection.BuildServiceProvider();

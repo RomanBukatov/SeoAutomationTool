@@ -3,180 +3,224 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:SeoTool.Wpf"
-        xmlns:viewModels="clr-namespace:SeoTool.Wpf.ViewModels"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
-        Title="SeoTool" Height="640" Width="1070">
+        Title="SeoTool" Height="800" Width="1000"
+        ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterScreen"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        Background="{DynamicResource MaterialDesignPaper}"
+        FontFamily="{materialDesign:MaterialDesignFont}">
+
+    <Window.DataContext>
+        <Binding Path="MainViewModel" Source="{StaticResource ServiceLocator}"/>
+    </Window.DataContext>
+
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" />
-            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="2*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Left Column: Settings -->
-        <ScrollViewer Grid.Column="0" Margin="20" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <!-- Proxy Settings Card -->
-                <materialDesign:Card Margin="0,0,0,20" Padding="20">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <materialDesign:PackIcon Kind="Network" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <TextBlock Text="Настройки прокси" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
-                        </StackPanel>
-                        <DockPanel Margin="0,0,0,15">
-                            <Button
-                                Command="{Binding SelectProxyFileCommand}"
-                                Style="{DynamicResource MaterialDesignIconButton}"
-                                ToolTip="Выбрать файл прокси"
-                                DockPanel.Dock="Right"
-                                Margin="8,0,0,0"
-                                Width="40"
-                                Height="40">
-                                <materialDesign:PackIcon Kind="FileFind" />
-                            </Button>
-                            <TextBox
-                                Text="{Binding ProxyFilePath}"
-                                materialDesign:HintAssist.Hint="Путь к файлу прокси"
-                                materialDesign:HintAssist.HelperText="Укажите путь к файлу с прокси"
-                                ToolTip="Укажите путь к .txt файлу со списком прокси."
-                                DockPanel.Dock="Left" />
-                        </DockPanel>
+        <!-- Левая колонка -->
+        <StackPanel Grid.Column="0" Margin="16">
+            <!-- Прокси -->
+            <!-- Прокси -->
+            <materialDesign:Card Margin="0,0,0,20" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <materialDesign:PackIcon Kind="Network" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBlock Text="Настройки прокси" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
                     </StackPanel>
-                </materialDesign:Card>
+                    <DockPanel Margin="0,0,0,15">
+                        <Button
+                            Command="{Binding SelectProxyFileCommand}"
+                            Style="{DynamicResource MaterialDesignIconButton}"
+                            ToolTip="Выбрать файл прокси"
+                            DockPanel.Dock="Right"
+                            Margin="8,0,0,0"
+                            Width="40"
+                            Height="40">
+                            <materialDesign:PackIcon Kind="FileFind" />
+                        </Button>
+                        <TextBox
+                            Text="{Binding ProxyFilePath}"
+                            materialDesign:HintAssist.Hint="Путь к файлу прокси"
+                            materialDesign:HintAssist.HelperText="Укажите путь к .txt файлу со списком прокси"
+                            ToolTip="Укажите путь к .txt файлу со списком прокси."
+                            DockPanel.Dock="Left" />
+                    </DockPanel>
+                </StackPanel>
+            </materialDesign:Card>
 
-                <!-- Cookies Settings Card -->
-                <materialDesign:Card Margin="0,0,0,20" Padding="20">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <materialDesign:PackIcon Kind="Cookie" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <TextBlock Text="Настройки куки" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
-                        </StackPanel>
-                        <DockPanel Margin="0,0,0,15">
-                            <Button
-                                Command="{Binding SelectCookiesFolderCommand}"
-                                Style="{DynamicResource MaterialDesignIconButton}"
-                                ToolTip="Выбрать папку с куки"
-                                DockPanel.Dock="Right"
-                                Margin="8,0,0,0"
-                                Width="40"
-                                Height="40">
-                                <materialDesign:PackIcon Kind="Folder" />
-                            </Button>
-                            <TextBox
-                                Text="{Binding CookiesFolderPath}"
-                                materialDesign:HintAssist.Hint="Путь к папке с куки"
-                                materialDesign:HintAssist.HelperText="Папка для хранения куки"
-                                ToolTip="Укажите путь к папке с .txt файлами куки."
-                                DockPanel.Dock="Left" />
-                        </DockPanel>
-                        <DockPanel Margin="0,0,0,15">
-                            <Button
-                                Command="{Binding SelectUsedCookiesFolderCommand}"
-                                Style="{DynamicResource MaterialDesignIconButton}"
-                                ToolTip="Выбрать папку для использованных куки"
-                                DockPanel.Dock="Right"
-                                Margin="8,0,0,0"
-                                Width="40"
-                                Height="40">
-                                <materialDesign:PackIcon Kind="Folder" />
-                            </Button>
-                            <TextBox
-                                Text="{Binding UsedCookiesFolderPath}"
-                                materialDesign:HintAssist.Hint="Путь к папке для использованных куки"
-                                materialDesign:HintAssist.HelperText="Папка для использованных куки"
-                                ToolTip="Укажите путь к папке для хранения использованных .txt файлов куки."
-                                DockPanel.Dock="Left" />
-                        </DockPanel>
+            <!-- Куки -->
+            <materialDesign:Card Margin="0,0,0,20" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <materialDesign:PackIcon Kind="Cookie" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBlock Text="Настройки куки" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
                     </StackPanel>
-                </materialDesign:Card>
+                    <DockPanel Margin="0,0,0,15">
+                        <Button
+                            Command="{Binding SelectCookiesFolderCommand}"
+                            Style="{DynamicResource MaterialDesignIconButton}"
+                            ToolTip="Выбрать папку с куки"
+                            DockPanel.Dock="Right"
+                            Margin="8,0,0,0"
+                            Width="40"
+                            Height="40">
+                            <materialDesign:PackIcon Kind="Folder" />
+                        </Button>
+                        <TextBox
+                            Text="{Binding CookiesFolderPath}"
+                            materialDesign:HintAssist.Hint="Путь к папке с куки"
+                            materialDesign:HintAssist.HelperText="Папка для хранения куки"
+                            ToolTip="Укажите путь к папке с .txt файлами куки."
+                            DockPanel.Dock="Left" />
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,15">
+                        <Button
+                            Command="{Binding SelectUsedCookiesFolderCommand}"
+                            Style="{DynamicResource MaterialDesignIconButton}"
+                            ToolTip="Выбрать папку для использованных куки"
+                            DockPanel.Dock="Right"
+                            Margin="8,0,0,0"
+                            Width="40"
+                            Height="40">
+                            <materialDesign:PackIcon Kind="Folder" />
+                        </Button>
+                        <TextBox
+                            Text="{Binding UsedCookiesFolderPath}"
+                            materialDesign:HintAssist.Hint="Путь к папке для использованных куки"
+                            materialDesign:HintAssist.HelperText="Папка для использованных куки"
+                            ToolTip="Укажите путь к папке для хранения использованных .txt файлов куки."
+                            DockPanel.Dock="Left" />
+                    </DockPanel>
+                </StackPanel>
+            </materialDesign:Card>
 
-                <!-- API Settings Card -->
-                <materialDesign:Card Margin="0,0,0,20" Padding="20">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <materialDesign:PackIcon Kind="Key" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <TextBlock Text="API и конфигурация" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
-                        </StackPanel>
-                        <DockPanel Margin="0,0,0,15">
-                            <Button
-                                Command="{Binding ShowFingerprintHelpCommand}"
-                                Style="{DynamicResource MaterialDesignIconButton}"
-                                ToolTip="Показать справку по получению API ключа"
-                                DockPanel.Dock="Right"
-                                Margin="8,0,0,0"
-                                Width="40"
-                                Height="40">
-                                <materialDesign:PackIcon Kind="Help" />
-                            </Button>
-                            <TextBox
-                                Text="{Binding FingerprintApiKey}"
-                                materialDesign:HintAssist.Hint="GoLogin API ключ"
-                                materialDesign:HintAssist.HelperText="API ключ для GoLogin сервиса"
-                                ToolTip="Укажите API ключ для получения отпечатков браузера от GoLogin."
-                                DockPanel.Dock="Left" />
-                        </DockPanel>
-                        <DockPanel Margin="0,0,0,20">
-                            <Button
-                                Command="{Binding SelectConfigFileCommand}"
-                                Style="{DynamicResource MaterialDesignIconButton}"
-                                ToolTip="Выбрать файл конфигурации"
-                                DockPanel.Dock="Right"
-                                Margin="8,0,0,0"
-                                Width="40"
-                                Height="40">
-                                <materialDesign:PackIcon Kind="FileCog" />
-                            </Button>
-                            <TextBox
-                                Text="{Binding ConfigFilePath}"
-                                materialDesign:HintAssist.Hint="Путь к файлу конфигурации"
-                                materialDesign:HintAssist.HelperText="Путь к конфигурационному файлу (.json, .config, .ini, .txt)"
-                                ToolTip="Укажите путь к файлу конфигурации приложения (.json, .config, .ini, .txt)."
-                                DockPanel.Dock="Left" />
-                        </DockPanel>
+            <!-- API и Конфигурация -->
+            <materialDesign:Card Margin="0,0,0,20" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <materialDesign:PackIcon Kind="Key" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBlock Text="API и Конфигурация" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
                     </StackPanel>
-                </materialDesign:Card>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            Text="{Binding FingerprintApiKey}"
+                            materialDesign:HintAssist.Hint="GoLogin API ключ"
+                            materialDesign:HintAssist.HelperText="API ключ для GoLogin сервиса"
+                            ToolTip="Укажите API ключ для получения отпечатков браузера от GoLogin."
+                            Grid.Column="0" />
+                        <Button
+                            Command="{Binding ShowFingerprintHelpCommand}"
+                            Style="{DynamicResource MaterialDesignIconButton}"
+                            ToolTip="Показать справку по получению API ключа"
+                            Width="40"
+                            Height="40"
+                            Margin="8,0,0,0"
+                            Grid.Column="1">
+                            <materialDesign:PackIcon Kind="Help" />
+                        </Button>
+                    </Grid>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            Text="{Binding TargetDomain}"
+                            materialDesign:HintAssist.Hint="Целевой домен"
+                            materialDesign:HintAssist.HelperText="Домен сайта для поиска (например: example.com)"
+                            Grid.Column="0" />
+                        <Button
+                            Command="{Binding ShowTargetDomainHelpCommand}"
+                            Style="{DynamicResource MaterialDesignIconButton}"
+                            ToolTip="Показать подсказку по целевому домену"
+                            Width="40"
+                            Height="40"
+                            Margin="8,0,0,0"
+                            Grid.Column="1">
+                            <materialDesign:PackIcon Kind="Web" />
+                        </Button>
+                    </Grid>
+                    <Grid Margin="0,0,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            Text="{Binding Keyword}"
+                            materialDesign:HintAssist.Hint="Ключевое слово"
+                            materialDesign:HintAssist.HelperText="Ключевое слово для поиска в Bing (например: купить смартфон)"
+                            Grid.Column="0" />
+                        <Button
+                            Command="{Binding ShowKeywordHelpCommand}"
+                            Style="{DynamicResource MaterialDesignIconButton}"
+                            ToolTip="Показать подсказку по ключевому слову"
+                            Width="40"
+                            Height="40"
+                            Margin="8,0,0,0"
+                            Grid.Column="1">
+                            <materialDesign:PackIcon Kind="Magnify" />
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </materialDesign:Card>
 
-                <!-- Control Buttons -->
-                <materialDesign:Card Padding="20">
-                    <StackPanel>
-                        <TextBlock Text="Управление" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,15" />
-                        <StackPanel Orientation="Horizontal">
-                            <Button
-                                Command="{Binding StartAutomationCommand}"
-                                Style="{DynamicResource MaterialDesignRaisedAccentButton}"
-                                ToolTip="Запустить процесс автоматизации."
-                                Width="120"
-                                Height="40"
-                                Margin="0,0,10,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Play" Margin="0,0,8,0" />
-                                    <TextBlock Text="Старт" FontSize="14" />
-                                </StackPanel>
-                            </Button>
-                            <Button
-                                Command="{Binding StopAutomationCommand}"
-                                Style="{DynamicResource MaterialDesignRaisedSecondaryButton}"
-                                ToolTip="Остановить текущий процесс."
-                                Width="120"
-                                Height="40">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Stop" Margin="0,0,8,0" />
-                                    <TextBlock Text="Стоп" FontSize="14" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
+            <!-- Управление -->
+            <materialDesign:Card Padding="20">
+                <StackPanel>
+                    <TextBlock Text="Управление" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,15" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button
+                            Command="{Binding StartAutomationCommand}"
+                            Style="{DynamicResource MaterialDesignRaisedAccentButton}"
+                            ToolTip="Запустить процесс автоматизации."
+                            Width="120"
+                            Height="40"
+                            Margin="0,0,10,0">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Play" Margin="0,0,8,0" />
+                                <TextBlock Text="Старт" FontSize="14" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            Command="{Binding StopAutomationCommand}"
+                            Style="{DynamicResource MaterialDesignRaisedSecondaryButton}"
+                            ToolTip="Остановить текущий процесс."
+                            Width="120"
+                            Height="40">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Stop" Margin="0,0,8,0" />
+                                <TextBlock Text="Стоп" FontSize="14" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
-                </materialDesign:Card>
-            </StackPanel>
-        </ScrollViewer>
+                </StackPanel>
+            </materialDesign:Card>
+        </StackPanel>
 
-        <!-- Right Column: Logs -->
+        <!-- Правая колонка -->
         <materialDesign:Card Grid.Column="1" Margin="20" Padding="20">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                     <materialDesign:PackIcon Kind="Console" VerticalAlignment="Center" Margin="0,0,10,0" />
                     <TextBlock Text="Логи автоматизации" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
+                    <Button
+                        Command="{Binding ClearLogsCommand}"
+                        Style="{DynamicResource MaterialDesignIconButton}"
+                        ToolTip="Очистить логи"
+                        Margin="10,0,0,0"
+                        Width="30"
+                        Height="30">
+                        <materialDesign:PackIcon Kind="Delete" />
+                    </Button>
                 </StackPanel>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MaxHeight="400">
                     <TextBox Text="{Binding Logs, Mode=OneWay}"

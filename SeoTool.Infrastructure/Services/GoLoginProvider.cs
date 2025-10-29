@@ -13,9 +13,11 @@ public class GoLoginProvider : IFingerprintProvider
 {
     public async Task<Fingerprint> GetFingerprintAsync(string apiKey)
     {
+        Console.WriteLine(">>> GoLoginProvider.GetFingerprintAsync START");
         string tempJsonPath = Path.GetTempFileName();
         try
         {
+            Console.WriteLine(">>> GoLoginProvider: Создание временного JSON файла");
             // --- ЭТАП 1: Создание профиля ---
             var requestBody = new
             {
@@ -33,15 +35,24 @@ public class GoLoginProvider : IFingerprintProvider
                 }
             };
             await File.WriteAllTextAsync(tempJsonPath, JsonSerializer.Serialize(requestBody));
+            Console.WriteLine(">>> GoLoginProvider: JSON файл создан, путь: " + tempJsonPath);
 
+            Console.WriteLine(">>> GoLoginProvider: Выполнение POST запроса для создания профиля");
             var postIdResult = await RunCurlCommand($"-X POST \"https://api.gologin.com/browser\" -H \"Authorization: Bearer {apiKey}\" -H \"Content-Type: application/json\" -d @\"{tempJsonPath}\"");
+            Console.WriteLine($"GoLogin POST response: {postIdResult}");
+
+            Console.WriteLine(">>> GoLoginProvider: Парсинг ответа POST запроса");
             var profileId = JsonDocument.Parse(postIdResult).RootElement.GetProperty("id").GetString();
+            Console.WriteLine(">>> GoLoginProvider: Получен profileId: " + profileId);
 
             if(string.IsNullOrEmpty(profileId))
                 throw new InvalidOperationException("Не удалось получить ID профиля от GoLogin.");
 
             // --- ЭТАП 2: Получение отпечатка ---
+            Console.WriteLine(">>> GoLoginProvider: Выполнение GET запроса для получения отпечатка");
             var getFingerprintResult = await RunCurlCommand($"-X GET \"https://api.gologin.com/browser/{profileId}\" -H \"Authorization: Bearer {apiKey}\"");
+            Console.WriteLine($"GoLogin GET response: {getFingerprintResult}");
+            Console.WriteLine(">>> GoLoginProvider: Парсинг ответа GET запроса");
 
             // --- Парсинг и формирование JS ---
             using var jsonDoc = JsonDocument.Parse(getFingerprintResult);
@@ -113,6 +124,8 @@ WebGLRenderingContext.prototype.getParameter = function(parameter) {{
         }
         catch (Exception ex)
         {
+            Console.WriteLine($">>> GoLoginProvider: Исключение в GetFingerprintAsync: {ex.Message}");
+            Console.WriteLine($"StackTrace: {ex.StackTrace}");
             throw new InvalidOperationException($"Критическая ошибка при работе с GoLogin через cURL: {ex.Message}", ex);
         }
         finally
@@ -124,29 +137,63 @@ WebGLRenderingContext.prototype.getParameter = function(parameter) {{
 
     private async Task<string> RunCurlCommand(string arguments)
     {
-        var process = new Process
+        Console.WriteLine(">>> GoLoginProvider.RunCurlCommand: Запуск curl с аргументами: " + arguments);
+        try
         {
-            StartInfo = new ProcessStartInfo
+            var process = new Process
             {
-                FileName = "curl.exe",
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "curl.exe",
+                    Arguments = arguments + " -v", // Добавляем verbose
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8
+                }
+            };
+
+            Console.WriteLine(">>> GoLoginProvider.RunCurlCommand: Запуск процесса");
+            process.Start();
+            Console.WriteLine(">>> GoLoginProvider.RunCurlCommand: Чтение вывода");
+            string output = await process.StandardOutput.ReadToEndAsync();
+            string error = await process.StandardError.ReadToEndAsync();
+            Console.WriteLine(">>> GoLoginProvider.RunCurlCommand: Ожидание завершения");
+            await process.WaitForExitAsync();
+
+            Console.WriteLine($">>> GoLoginProvider.RunCurlCommand: Exit code: {process.ExitCode}");
+            Console.WriteLine($">>> GoLoginProvider.RunCurlCommand: Error output: {error}");
+
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException($"Ошибка выполнения cURL. Exit code: {process.ExitCode}. Ошибка: {error}");
             }
-        };
 
-        process.Start();
-        string output = await process.StandardOutput.ReadToEndAsync();
-        string error = await process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
+            // Очищаем ответ от мусора перед JSON скобкой
+            Console.WriteLine("--- RAW CURL OUTPUT ---");
+            Console.WriteLine(output);
+            Console.WriteLine("--- END RAW CURL OUTPUT ---");
 
-        if (process.ExitCode != 0)
-        {
-            throw new InvalidOperationException($"Ошибка выполнения cURL. Exit code: {process.ExitCode}. Ошибка: {error}");
+            int jsonStartIndex = output.IndexOf('{');
+            if (jsonStartIndex >= 0)
+            {
+                output = output.Substring(jsonStartIndex);
+                Console.WriteLine(">>> GoLoginProvider.RunCurlCommand: Очищенный output: " + output);
+            }
+            else
+            {
+                Console.WriteLine(">>> GoLoginProvider.RunCurlCommand: JSON скобка не найдена!");
+            }
+
+            return output;
         }
-
-        return output;
+        catch (Exception ex)
+        {
+            Console.WriteLine($">>> GoLoginProvider.RunCurlCommand: Исключение: {ex.Message}");
+            Console.WriteLine($"StackTrace: {ex.StackTrace}");
+            throw;
+        }
     }
 }

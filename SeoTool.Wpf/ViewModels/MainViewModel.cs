@@ -30,10 +30,13 @@ namespace SeoTool.Wpf.ViewModels
 
 
         [ObservableProperty]
-        private string _configFilePath;
+        private string _fingerprintApiKey;
 
         [ObservableProperty]
-        private string _fingerprintApiKey;
+        private string _targetDomain;
+
+        [ObservableProperty]
+        private string _keyword;
 
         [ObservableProperty]
         private string _logs;
@@ -44,32 +47,53 @@ namespace SeoTool.Wpf.ViewModels
             _logger = logger;
         }
 
-        [RelayCommand(CanExecute = nameof(CanStartAutomation))]
+        [RelayCommand]
         private async Task StartAutomation()
         {
+            // Проверяем обязательные поля
+            var missingFields = new List<string>();
+            if (string.IsNullOrWhiteSpace(ProxyFilePath)) missingFields.Add("Путь к файлу прокси");
+            if (string.IsNullOrWhiteSpace(CookiesFolderPath)) missingFields.Add("Папка с куки");
+            if (string.IsNullOrWhiteSpace(UsedCookiesFolderPath)) missingFields.Add("Папка для использованных куки");
+            if (string.IsNullOrWhiteSpace(TargetDomain)) missingFields.Add("Целевой домен");
+            if (string.IsNullOrWhiteSpace(Keyword)) missingFields.Add("Ключевое слово");
+            if (string.IsNullOrWhiteSpace(FingerprintApiKey)) missingFields.Add("API-ключ GoLogin");
+
+            if (missingFields.Any())
+            {
+                MessageBox.Show($"Необходимо заполнить следующие поля:\n\n{string.Join("\n", missingFields)}",
+                    "Недостаточно данных", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             // Dispose of any existing cancellation token source
             _cts?.Dispose();
 
             try
             {
+                Logs += $"[{DateTime.Now:HH:mm:ss}] Запуск автоматизации для домена '{TargetDomain}' с ключевым словом '{Keyword}'...\n";
+
                 // Create new cancellation token source
                 _cts = new CancellationTokenSource();
-                var firstLine = File.ReadLines(ConfigFilePath).First();
-                var parts = firstLine.Split(':');
-                var task = new SearchTask(parts[0], parts[1]);
+                var task = new SearchTask(TargetDomain, Keyword);
                 await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, FingerprintApiKey, _cts.Token);
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"=== STARTAUTOMATIONCOMMAND EXCEPTION ===");
+                Console.WriteLine($"Exception: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                Console.WriteLine($"=== END STARTAUTOMATIONCOMMAND EXCEPTION ===");
+
                 var userFriendlyMessage = GetUserFriendlyErrorMessage(ex);
-                Logs += $"Error: {userFriendlyMessage}\n";
+                Logs += $"[{DateTime.Now:HH:mm:ss}] Ошибка: {userFriendlyMessage}\n";
                 _logger.LogError(ex, "Ошибка в StartAutomationCommand");
                 MessageBox.Show($"Произошла ошибка при выполнении автоматизации:\n\n{userFriendlyMessage}",
                     "Ошибка автоматизации", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
-                Logs += "Work completed.\n";
+                Logs += $"[{DateTime.Now:HH:mm:ss}] Автоматизация завершена.\n";
             }
         }
 
@@ -77,17 +101,9 @@ namespace SeoTool.Wpf.ViewModels
         private void StopAutomationCommand()
         {
             _cts?.Cancel();
-            Logs += "Automation stopped.\n";
+            Logs += $"[{DateTime.Now:HH:mm:ss}] Автоматизация остановлена пользователем.\n";
         }
 
-        private bool CanStartAutomation()
-        {
-            return !string.IsNullOrWhiteSpace(ProxyFilePath) &&
-                    !string.IsNullOrWhiteSpace(CookiesFolderPath) &&
-                    !string.IsNullOrWhiteSpace(UsedCookiesFolderPath) &&
-                    !string.IsNullOrWhiteSpace(ConfigFilePath) &&
-                    !string.IsNullOrWhiteSpace(FingerprintApiKey);
-        }
 
         partial void OnProxyFilePathChanged(string value)
         {
@@ -105,12 +121,18 @@ namespace SeoTool.Wpf.ViewModels
         }
 
 
-        partial void OnConfigFilePathChanged(string value)
+
+        partial void OnFingerprintApiKeyChanged(string value)
         {
             StartAutomationCommand.NotifyCanExecuteChanged();
         }
 
-        partial void OnFingerprintApiKeyChanged(string value)
+        partial void OnTargetDomainChanged(string value)
+        {
+            StartAutomationCommand.NotifyCanExecuteChanged();
+        }
+
+        partial void OnKeywordChanged(string value)
         {
             StartAutomationCommand.NotifyCanExecuteChanged();
         }
@@ -175,22 +197,6 @@ namespace SeoTool.Wpf.ViewModels
             return null;
         }
 
-        [RelayCommand]
-        private void SelectConfigFile()
-        {
-            var openFileDialog = new OpenFileDialog
-            {
-                Title = "Выберите файл конфигурации",
-                Filter = "Файлы конфигурации (*.json;*.config;*.ini;*.txt)|*.json;*.config;*.ini;*.txt|Все файлы (*.*)|*.*",
-                CheckFileExists = false,
-                CheckPathExists = true
-            };
-
-            if (openFileDialog.ShowDialog() == true)
-            {
-                ConfigFilePath = openFileDialog.FileName;
-            }
-        }
 
         [RelayCommand]
         private void ShowFingerprintHelp()
@@ -205,6 +211,44 @@ namespace SeoTool.Wpf.ViewModels
                 "Справка по GoLogin API",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
+        }
+
+        [RelayCommand]
+        private void ShowTargetDomainHelp()
+        {
+            MessageBox.Show(
+                "Целевой домен:\n\n" +
+                "Укажите домен сайта, который нужно найти в результатах поиска Bing.\n\n" +
+                "Примеры:\n" +
+                "• example.com\n" +
+                "• shop.example.ru\n" +
+                "• subdomain.site.org\n\n" +
+                "Бот будет искать ссылки, содержащие этот домен, в результатах поиска.",
+                "Подсказка по целевому домену",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        [RelayCommand]
+        private void ShowKeywordHelp()
+        {
+            MessageBox.Show(
+                "Ключевое слово:\n\n" +
+                "Укажите фразу для поиска в Bing.\n\n" +
+                "Примеры:\n" +
+                "• купить смартфон\n" +
+                "• лучшие рестораны Москвы\n" +
+                "• как приготовить борщ\n\n" +
+                "Бот выполнит поиск по этому запросу и перейдет по первой найденной ссылке на указанный домен.",
+                "Подсказка по ключевому слову",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        [RelayCommand]
+        private void ClearLogs()
+        {
+            Logs = string.Empty;
         }
 
 
