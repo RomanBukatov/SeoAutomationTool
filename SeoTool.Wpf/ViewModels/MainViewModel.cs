@@ -5,6 +5,7 @@ using SeoTool.Core.Abstractions;
 using SeoTool.Domain.Entities;
 using System.Threading.Tasks;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using System.Windows;
 using System.Runtime.InteropServices;
@@ -15,6 +16,7 @@ namespace SeoTool.Wpf.ViewModels
     public partial class MainViewModel : ObservableObject
     {
         private readonly IAutomationService _automationService;
+        private readonly ILogger<MainViewModel> _logger;
         private CancellationTokenSource _cts;
 
         [ObservableProperty]
@@ -31,11 +33,15 @@ namespace SeoTool.Wpf.ViewModels
         private string _configFilePath;
 
         [ObservableProperty]
+        private string _fingerprintApiKey;
+
+        [ObservableProperty]
         private string _logs;
 
-        public MainViewModel(IAutomationService automationService)
+        public MainViewModel(IAutomationService automationService, ILogger<MainViewModel> logger)
         {
             _automationService = automationService;
+            _logger = logger;
         }
 
         [RelayCommand(CanExecute = nameof(CanStartAutomation))]
@@ -51,12 +57,13 @@ namespace SeoTool.Wpf.ViewModels
                 var firstLine = File.ReadLines(ConfigFilePath).First();
                 var parts = firstLine.Split(':');
                 var task = new SearchTask(parts[0], parts[1]);
-                await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, _cts.Token);
+                await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, FingerprintApiKey, _cts.Token);
             }
             catch (Exception ex)
             {
                 var userFriendlyMessage = GetUserFriendlyErrorMessage(ex);
                 Logs += $"Error: {userFriendlyMessage}\n";
+                _logger.LogError(ex, "Ошибка в StartAutomationCommand");
                 MessageBox.Show($"Произошла ошибка при выполнении автоматизации:\n\n{userFriendlyMessage}",
                     "Ошибка автоматизации", MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -78,7 +85,8 @@ namespace SeoTool.Wpf.ViewModels
             return !string.IsNullOrWhiteSpace(ProxyFilePath) &&
                     !string.IsNullOrWhiteSpace(CookiesFolderPath) &&
                     !string.IsNullOrWhiteSpace(UsedCookiesFolderPath) &&
-                    !string.IsNullOrWhiteSpace(ConfigFilePath);
+                    !string.IsNullOrWhiteSpace(ConfigFilePath) &&
+                    !string.IsNullOrWhiteSpace(FingerprintApiKey);
         }
 
         partial void OnProxyFilePathChanged(string value)
@@ -98,6 +106,11 @@ namespace SeoTool.Wpf.ViewModels
 
 
         partial void OnConfigFilePathChanged(string value)
+        {
+            StartAutomationCommand.NotifyCanExecuteChanged();
+        }
+
+        partial void OnFingerprintApiKeyChanged(string value)
         {
             StartAutomationCommand.NotifyCanExecuteChanged();
         }
@@ -177,6 +190,21 @@ namespace SeoTool.Wpf.ViewModels
             {
                 ConfigFilePath = openFileDialog.FileName;
             }
+        }
+
+        [RelayCommand]
+        private void ShowFingerprintHelp()
+        {
+            MessageBox.Show(
+                "Для получения API ключа GoLogin:\n\n" +
+                "1. Зарегистрируйтесь на сайте https://gologin.com\n" +
+                "2. Перейдите в раздел API\n" +
+                "3. Создайте новый API ключ\n" +
+                "4. Скопируйте ключ и вставьте в поле выше\n\n" +
+                "API ключ используется для получения уникальных отпечатков браузера.",
+                "Справка по GoLogin API",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
 

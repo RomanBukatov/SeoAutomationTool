@@ -3,6 +3,7 @@ using System.Data;
 using System.Windows;
 using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SeoTool.Core;
 using SeoTool.Core.Abstractions;
 using SeoTool.Infrastructure.Services;
@@ -23,6 +24,13 @@ namespace SeoTool.Wpf
 
             var serviceCollection = new ServiceCollection();
 
+            // Добавляем логирование
+            serviceCollection.AddLogging(configure =>
+            {
+                configure.AddConsole();
+                configure.SetMinimumLevel(LogLevel.Debug);
+            });
+
             // Регистрируем сервисы приложения
             serviceCollection.AddTransient<MainViewModel>();
             serviceCollection.AddTransient<MainWindow>();
@@ -32,6 +40,7 @@ namespace SeoTool.Wpf
             serviceCollection.AddTransient<IBrowserWorker, PlaywrightBrowserWorker>();
             serviceCollection.AddSingleton<IProxyProvider, FileProxyProvider>();
             serviceCollection.AddSingleton<ICookieProvider, FileCookieProvider>();
+            serviceCollection.AddSingleton<IFingerprintProvider, GoLoginProvider>();
 
             // Регистрируем HttpClient как singleton
             serviceCollection.AddSingleton<HttpClient>(new HttpClient());

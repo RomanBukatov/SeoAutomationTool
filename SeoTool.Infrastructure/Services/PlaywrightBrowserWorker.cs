@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using SeoTool.Core.Abstractions;
 using SeoTool.Domain.Entities;
@@ -12,6 +13,13 @@ namespace SeoTool.Infrastructure.Services
 {
     public class PlaywrightBrowserWorker : IBrowserWorker
     {
+        private readonly ILogger<PlaywrightBrowserWorker> _logger;
+
+        public PlaywrightBrowserWorker(ILogger<PlaywrightBrowserWorker> logger)
+        {
+            _logger = logger;
+        }
+
         public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, CancellationToken cancellationToken = default)
         {
             IPlaywright? playwright = null;
@@ -21,7 +29,10 @@ namespace SeoTool.Infrastructure.Services
 
             try
             {
+                Console.WriteLine(">>> PlaywrightBrowserWorker.PerformSearchTaskAsync START");
                 // Инициализируем Playwright
+                Console.WriteLine(">>> PlaywrightBrowserWorker: Creating Playwright instance...");
+                _logger.LogInformation("Инициализация Playwright...");
                 playwright = await Playwright.CreateAsync();
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -44,6 +55,7 @@ namespace SeoTool.Infrastructure.Services
                 };
 
                 // Запускаем браузер с опциями прокси
+                _logger.LogInformation("Запускаю браузер Chromium...");
                 browser = await playwright.Chromium.LaunchAsync(launchOptions);
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -70,41 +82,27 @@ namespace SeoTool.Infrastructure.Services
                 page = await context.NewPageAsync();
                 cancellationToken.ThrowIfCancellationRequested();
 
+                // Временное изменение: переходим на whoer.net для проверки прокси
+                _logger.LogInformation("Перехожу на страницу {Url}...", "https://whoer.net");
+                await page.GotoAsync("https://whoer.net");
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Переходим на https://www.bing.com
-                await page.GotoAsync("https://www.bing.com");
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Находим поле ввода по селектору [name="q"] и вводим keyword
-                var searchBox = page.Locator("[name=\"q\"]");
-                await searchBox.FillAsync(task.Keyword);
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Нажимаем Enter
-                await page.Keyboard.PressAsync("Enter");
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Ждем загрузки результатов
+                // Ждем загрузки страницы
                 await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Находим ссылку, которая содержит task.Domain, и берем первую
-                var targetLink = page.Locator($"a[href*='{task.Domain}']").First;
+                // Делаем скриншот страницы
+                await page.ScreenshotAsync(new PageScreenshotOptions { Path = "whoer_screenshot.png" });
 
-                // Кликаем по ссылке
-                await targetLink.ClickAsync();
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Ждем случайное время от 30 до 60 секунд
-                var randomDelay = Random.Shared.Next(30, 61);
+                // Ждем случайное время от 5 до 10 секунд (для теста прокси)
+                var randomDelay = Random.Shared.Next(5, 11);
                 await Task.Delay(randomDelay * 1000, cancellationToken);
 
             }
             catch (Exception ex)
             {
-                // Логируем ошибку (можно заменить на ваш логгер)
-                Console.WriteLine($"Error in PerformSearchTaskAsync: {ex.Message}");
+                // Логируем ошибку
+                _logger.LogError(ex, "Произошла ошибка в PlaywrightBrowserWorker.");
                 throw;
             }
             finally

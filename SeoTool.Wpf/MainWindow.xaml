@@ -98,6 +98,24 @@
                             <materialDesign:PackIcon Kind="Key" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <TextBlock Text="API и конфигурация" Style="{DynamicResource MaterialDesignHeadline6TextBlock}" />
                         </StackPanel>
+                        <DockPanel Margin="0,0,0,15">
+                            <Button
+                                Command="{Binding ShowFingerprintHelpCommand}"
+                                Style="{DynamicResource MaterialDesignIconButton}"
+                                ToolTip="Показать справку по получению API ключа"
+                                DockPanel.Dock="Right"
+                                Margin="8,0,0,0"
+                                Width="40"
+                                Height="40">
+                                <materialDesign:PackIcon Kind="Help" />
+                            </Button>
+                            <TextBox
+                                Text="{Binding FingerprintApiKey}"
+                                materialDesign:HintAssist.Hint="GoLogin API ключ"
+                                materialDesign:HintAssist.HelperText="API ключ для GoLogin сервиса"
+                                ToolTip="Укажите API ключ для получения отпечатков браузера от GoLogin."
+                                DockPanel.Dock="Left" />
+                        </DockPanel>
                         <DockPanel Margin="0,0,0,20">
                             <Button
                                 Command="{Binding SelectConfigFileCommand}"
