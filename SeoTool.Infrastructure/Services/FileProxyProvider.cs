@@ -25,22 +25,24 @@ namespace SeoTool.Infrastructure.Services
                 throw new FileNotFoundException($"Proxy file not found: {filePath}");
             }
 
-            var lines = await File.ReadAllLinesAsync(filePath);
+            var lines = (await File.ReadAllLinesAsync(filePath)).ToList();
 
-            if (lines.Length == 0)
+            if (lines.Count == 0)
             {
                 throw new InvalidOperationException($"Proxy file is empty: {filePath}");
             }
 
-            var random = new Random();
-            var randomLine = lines[random.Next(lines.Length)].Trim();
+            var proxyLine = lines[0].Trim();
 
-            if (string.IsNullOrWhiteSpace(randomLine))
+            if (string.IsNullOrWhiteSpace(proxyLine))
             {
                 throw new InvalidOperationException($"Selected proxy line is empty in file: {filePath}");
             }
 
-            return ParseProxy(randomLine);
+            var remainingLines = lines.Skip(1).ToList();
+            await File.WriteAllLinesAsync(filePath, remainingLines);
+
+            return ParseProxy(proxyLine);
         }
 
         private static Proxy ParseProxy(string proxyLine)

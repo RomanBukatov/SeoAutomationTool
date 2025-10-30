@@ -113,20 +113,56 @@ namespace SeoTool.Infrastructure.Services
                 {
                 }
 
-                // Извлекаем чистое имя домена, например, "youtube" из "youtube.com"
-                var domainNameOnly = task.Domain.Split('.')[0];
+                // Пытаемся найти и нажать кнопку принятия куки
+                try
+                {
+                    var acceptButton = page.Locator("#bnp_btn_accept").First;
+                    if (await acceptButton.IsVisibleAsync())
+                    {
+                        await acceptButton.ClickAsync();
+                        _logger.LogInformation("Баннер с куки принят.");
+                    }
+                }
+                catch (Exception) { /* Игнорируем, если кнопки нет */ }
 
-                // Ищем ссылку <a>, внутри которой есть текст с чистым именем домена (без учета регистра)
-                var link = page.Locator($"a:has-text('{domainNameOnly}')").First;
+                _logger.LogInformation("Начинаю \"умный\" поиск ссылки на домен: {Domain}", task.Domain);
+                bool linkFoundAndClicked = false;
 
-                // Сначала скроллим до элемента, чтобы он стал видимым
-                await link.ScrollIntoViewIfNeededAsync();
+                // Получаем ВСЕ ссылки на странице
+                var allLinks = page.Locator("a");
+                var linkCount = await allLinks.CountAsync();
+                _logger.LogInformation("Найдено {Count} ссылок на странице. Начинаю перебор...", linkCount);
 
-                // Ждем, пока он точно будет готов к клику
-                await link.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+                for (int i = 0; i < linkCount; i++)
+                {
+                    var currentLink = allLinks.Nth(i);
+                    string? href = await currentLink.GetAttributeAsync("href");
 
-                // Кликаем
-                await link.ClickAsync();
+                    if (!string.IsNullOrEmpty(href) && href.Contains(task.Domain))
+                    {
+                        _logger.LogInformation("Найдена потенциальная ссылка: {Href}. Проверяю видимость...", href);
+                        if (await currentLink.IsVisibleAsync())
+                        {
+                            _logger.LogInformation("Ссылка видима! Пробую кликнуть...");
+                            await currentLink.ClickAsync(new() { Timeout = 5000 }); // Короткий таймаут на клик
+                            linkFoundAndClicked = true;
+                            _logger.LogInformation("Клик по ссылке {Href} успешно выполнен!", href);
+                            break; // ВЫХОДИМ ИЗ ЦИКЛА
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Ссылка {Href} найдена, но она невидима. Пропускаю.", href);
+                        }
+                    }
+                }
+
+                // Если после цикла ссылка так и не была найдена
+                if (!linkFoundAndClicked)
+                {
+                    // Делаем скриншот, чтобы понять, почему
+                    await page.ScreenshotAsync(new() { Path = "final_fail_screenshot.png", FullPage = true });
+                    throw new Exception($"Не удалось найти и кликнуть по видимой ссылке на домен '{task.Domain}' после перебора {linkCount} ссылок. Скриншот сохранен в final_fail_screenshot.png");
+                }
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Ждем на странице случайное время от 30 до 60 секунд
