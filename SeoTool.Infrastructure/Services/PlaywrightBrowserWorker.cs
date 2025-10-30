@@ -31,9 +31,6 @@ namespace SeoTool.Infrastructure.Services
 
             try
             {
-                Console.WriteLine(">>> PlaywrightBrowserWorker.PerformSearchTaskAsync START");
-                // Инициализируем Playwright
-                Console.WriteLine(">>> PlaywrightBrowserWorker: Creating Playwright instance...");
                 _logger.LogInformation("Инициализация Playwright...");
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -111,15 +108,16 @@ namespace SeoTool.Infrastructure.Services
                 {
                     var acceptButton = page.Locator("button:has-text('Accept'), button:has-text('Принять'), button[id*='accept'], button[class*='accept']").First;
                     await acceptButton.ClickAsync();
-                    Console.WriteLine(">>> PlaywrightBrowserWorker: Принял куки Bing");
                 }
                 catch
                 {
-                    Console.WriteLine(">>> PlaywrightBrowserWorker: Кнопка принятия куки не найдена или уже принята");
                 }
 
-                // Находим первую ссылку, содержащую домен
-                var link = page.Locator($"a[href*='{task.Domain}']").First;
+                // Извлекаем чистое имя домена, например, "youtube" из "youtube.com"
+                var domainNameOnly = task.Domain.Split('.')[0];
+
+                // Ищем ссылку <a>, внутри которой есть текст с чистым именем домена (без учета регистра)
+                var link = page.Locator($"a:has-text('{domainNameOnly}')").First;
 
                 // Сначала скроллим до элемента, чтобы он стал видимым
                 await link.ScrollIntoViewIfNeededAsync();
