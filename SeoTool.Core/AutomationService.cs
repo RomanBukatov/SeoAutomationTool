@@ -31,20 +31,24 @@ public class AutomationService : IAutomationService
         string cookiesPath,
         string usedCookiesPath,
         string fingerprintApiKey,
+        Action<string> logAction,
         CancellationToken token = default)
     {
         try
         {
             var proxy = await _proxyProvider.GetNextProxyAsync(proxyPath);
+            logAction("Прокси получен.");
             token.ThrowIfCancellationRequested();
 
             var cookies = await _cookieProvider.GetNextCookiesAsync(cookiesPath, usedCookiesPath);
+            logAction("Куки получены и перемещены.");
             token.ThrowIfCancellationRequested();
 
             Fingerprint fingerprint;
             try
             {
                 fingerprint = await _fingerprintProvider.GetFingerprintAsync(fingerprintApiKey);
+                logAction("Отпечаток получен.");
                 token.ThrowIfCancellationRequested();
             }
             catch (Exception ex)
@@ -52,7 +56,7 @@ public class AutomationService : IAutomationService
                 throw;
             }
 
-            await _browserWorker.PerformSearchTaskAsync(task, proxy, cookies, fingerprint, token);
+            await _browserWorker.PerformSearchTaskAsync(task, proxy, cookies, fingerprint, logAction, token);
         }
         catch (OperationCanceledException)
         {

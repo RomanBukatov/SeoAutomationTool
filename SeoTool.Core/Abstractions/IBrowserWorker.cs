@@ -7,6 +7,6 @@ namespace SeoTool.Core.Abstractions
 {
     public interface IBrowserWorker
     {
-        Task PerformSearchTaskAsync(SearchTask task, Proxy proxy, IEnumerable<CookieInfo> cookies, Fingerprint fingerprint, CancellationToken cancellationToken = default);
+        Task PerformSearchTaskAsync(SearchTask task, Proxy proxy, IEnumerable<CookieInfo> cookies, Fingerprint fingerprint, Action<string> logAction, CancellationToken cancellationToken = default);
     }
 }

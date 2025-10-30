@@ -11,5 +11,6 @@ public interface IAutomationService
         string cookiesPath,
         string usedCookiesPath,
         string fingerprintApiKey,
+        Action<string> logAction,
         CancellationToken token = default);
 }

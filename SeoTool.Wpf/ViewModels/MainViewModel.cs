@@ -47,6 +47,11 @@ namespace SeoTool.Wpf.ViewModels
             _logger = logger;
         }
 
+        public void AddLog(string message)
+        {
+            Application.Current.Dispatcher.Invoke(() => Logs += $"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
+        }
+
         [RelayCommand]
         private async Task StartAutomation()
         {
@@ -76,7 +81,7 @@ namespace SeoTool.Wpf.ViewModels
                 // Create new cancellation token source
                 _cts = new CancellationTokenSource();
                 var task = new SearchTask(TargetDomain, Keyword);
-                await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, FingerprintApiKey, _cts.Token);
+                await _automationService.StartAutomationAsync(task, ProxyFilePath, CookiesFolderPath, UsedCookiesFolderPath, FingerprintApiKey, AddLog, _cts.Token);
             }
             catch (Exception ex)
             {

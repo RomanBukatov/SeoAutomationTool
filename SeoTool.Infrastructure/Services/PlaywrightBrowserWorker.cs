@@ -20,7 +20,7 @@ namespace SeoTool.Infrastructure.Services
             _logger = logger;
         }
 
-        public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, Fingerprint fingerprint, CancellationToken cancellationToken = default)
+        public async Task PerformSearchTaskAsync(SearchTask task, DomainProxy proxy, IEnumerable<CookieInfo> cookies, Fingerprint fingerprint, Action<string> logAction, CancellationToken cancellationToken = default)
         {
             IPlaywright? playwright = null;
             IBrowser? browser = null;
@@ -54,7 +54,8 @@ namespace SeoTool.Infrastructure.Services
                 };
 
                 // Запускаем браузер с опциями прокси
-                _logger.LogInformation("Запускаю браузер Chromium...");
+                _logger.LogInformation("Запускаю браузер Chrome...");
+                logAction("Запускаю браузер Chrome...");
                 browser = await playwright.Chromium.LaunchAsync(launchOptions);
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -98,9 +99,10 @@ namespace SeoTool.Infrastructure.Services
                 var searchUrl = $"https://www.bing.com/search?q={searchQuery}";
 
                 _logger.LogInformation("Перехожу напрямую по поисковому URL: {SearchUrl}", searchUrl);
+                logAction($"Перехожу по поисковому URL: {searchUrl}");
 
                 // Переходим напрямую на страницу с результатами поиска
-                await page.GotoAsync(searchUrl, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+                await page.GotoAsync(searchUrl, new() { WaitUntil = WaitUntilState.Load, Timeout = 60000 });
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Принимаем куки Bing, если есть кнопка
@@ -125,49 +127,44 @@ namespace SeoTool.Infrastructure.Services
                 }
                 catch (Exception) { /* Игнорируем, если кнопки нет */ }
 
-                _logger.LogInformation("Начинаю \"умный\" поиск ссылки на домен: {Domain}", task.Domain);
-                bool linkFoundAndClicked = false;
+                _logger.LogInformation("Начинаю финальный поиск ссылки на домен: {Domain}", task.Domain);
 
-                // Получаем ВСЕ ссылки на странице
-                var allLinks = page.Locator("a");
-                var linkCount = await allLinks.CountAsync();
-                _logger.LogInformation("Найдено {Count} ссылок на странице. Начинаю перебор...", linkCount);
+                // Извлекаем чистое имя домена без "www." и протокола
+                var cleanDomain = task.Domain.Replace("https://", "").Replace("http://", "").Replace("www.", "");
 
-                for (int i = 0; i < linkCount; i++)
+                // Ищем ссылку <a>, у которой href содержит чистое имя домена (без учета регистра)
+                // Это наш основной, самый надежный локатор
+                var linkLocator = page.Locator($"a[href*='{cleanDomain}' i]");
+
+                try
                 {
-                    var currentLink = allLinks.Nth(i);
-                    string? href = await currentLink.GetAttributeAsync("href");
-
-                    if (!string.IsNullOrEmpty(href) && href.Contains(task.Domain))
-                    {
-                        _logger.LogInformation("Найдена потенциальная ссылка: {Href}. Проверяю видимость...", href);
-                        if (await currentLink.IsVisibleAsync())
-                        {
-                            _logger.LogInformation("Ссылка видима! Пробую кликнуть...");
-                            await currentLink.ClickAsync(new() { Timeout = 5000 }); // Короткий таймаут на клик
-                            linkFoundAndClicked = true;
-                            _logger.LogInformation("Клик по ссылке {Href} успешно выполнен!", href);
-                            break; // ВЫХОДИМ ИЗ ЦИКЛА
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Ссылка {Href} найдена, но она невидима. Пропускаю.", href);
-                        }
-                    }
+                    // Пытаемся кликнуть по первой найденной ссылке с таймаутом
+                    await linkLocator.First.ClickAsync(new() { Timeout = 30000 });
+                    _logger.LogInformation("Клик по ссылке с href*='{Domain}' успешно выполнен!", cleanDomain);
                 }
-
-                // Если после цикла ссылка так и не была найдена
-                if (!linkFoundAndClicked)
+                catch (TimeoutException)
                 {
-                    // Делаем скриншот, чтобы понять, почему
-                    await page.ScreenshotAsync(new() { Path = "final_fail_screenshot.png", FullPage = true });
-                    throw new Exception($"Не удалось найти и кликнуть по видимой ссылке на домен '{task.Domain}' после перебора {linkCount} ссылок. Скриншот сохранен в final_fail_screenshot.png");
+                    _logger.LogWarning("Не удалось найти ссылку по href. Пробую запасной вариант: поиск по видимому тексту.");
+
+                    // ЗАПАСНОЙ ВАРИАНТ: Если по href не нашли, ищем по тексту
+                    var textLocator = page.Locator($"a:has-text('{cleanDomain}')");
+                    try
+                    {
+                        await textLocator.First.ClickAsync(new() { Timeout = 15000 });
+                        _logger.LogInformation("Клик по ссылке с :has-text='{Domain}' успешно выполнен!", cleanDomain);
+                    }
+                    catch (Exception finalEx)
+                    {
+                        await page.ScreenshotAsync(new() { Path = "final_fail_screenshot.png", FullPage = true });
+                        throw new Exception($"ФИНАЛЬНЫЙ ПРОВАЛ: Не удалось найти ссылку ни по href, ни по тексту. Скриншот сохранен.", finalEx);
+                    }
                 }
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Ждем на странице случайное время от 30 до 60 секунд
                 var randomDelay = Random.Shared.Next(30, 61);
                 await Task.Delay(randomDelay * 1000, cancellationToken);
+                logAction("Ожидание на странице завершено. Сессия успешна.");
 
             }
             catch (Exception ex)
